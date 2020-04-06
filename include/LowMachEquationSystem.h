@@ -16,12 +16,13 @@
 
 #include "EquationSystem.h"
 #include "FieldTypeDef.h"
-#include "NaluParsing.h"
+#include "NaluParsedTypes.h"
 #include "TAMSAlgDriver.h"
 
 #include "ngp_algorithms/NodalGradAlgDriver.h"
 #include "ngp_algorithms/WallFricVelAlgDriver.h"
 #include "ngp_algorithms/EffDiffFluxCoeffAlg.h"
+#include "ngp_algorithms/CourantReAlgDriver.h"
 
 namespace stk{
 struct topology;
@@ -54,7 +55,9 @@ public:
     EquationSystems& equationSystems,
     const bool elementContinuityEqs);
   virtual ~LowMachEquationSystem();
-  
+
+  virtual void load(const YAML::Node&);
+
   virtual void initialize();
 
   virtual void register_nodal_fields(
@@ -66,9 +69,6 @@ public:
   virtual void register_element_fields(
     stk::mesh::Part *part,
     const stk::topology &theTopo);
-
-  virtual void register_interior_algorithm(
-    stk::mesh::Part *part);
 
   virtual void register_open_bc(
     stk::mesh::Part *part,
@@ -86,7 +86,6 @@ public:
 
   virtual void pre_iter_work();
   virtual void solve_and_update();
-  virtual void post_adapt_work();
 
   virtual void predict_state();
 
@@ -220,7 +219,7 @@ public:
   std::unique_ptr<EffDiffFluxCoeffAlg> diffFluxCoeffAlg_{nullptr};
   std::unique_ptr<Algorithm> tviscAlg_{nullptr};
 
-  AlgorithmDriver *cflReyAlgDriver_;
+  CourantReAlgDriver cflReAlgDriver_;
   std::unique_ptr<TAMSAlgDriver> TAMSAlgDriver_{nullptr};
 
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;

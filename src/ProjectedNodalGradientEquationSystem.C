@@ -308,14 +308,7 @@ ProjectedNodalGradientEquationSystem::register_overset_bc()
   create_constraint_algorithm(dqdx_);
 
   int nDim = realm_.meta_data().spatial_dimension();
-
-  // Perform fringe updates before all equation system solves
-  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
-
-  equationSystems_.preIterAlgDriver_.push_back(theAlg);
-
-  theAlg->fields_.push_back(
-    std::unique_ptr<OversetFieldData>(new OversetFieldData(dqdx_,1,nDim)));
+  equationSystems_.register_overset_field_update(dqdx_, 1, nDim);
 }
 
 //--------------------------------------------------------------------------
@@ -325,7 +318,7 @@ void
 ProjectedNodalGradientEquationSystem::initialize()
 {
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //linsys_->finalizeLinearSystem();
 }
 
 //--------------------------------------------------------------------------
@@ -356,7 +349,7 @@ ProjectedNodalGradientEquationSystem::reinitialize_linear_system()
 
   // initialize
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //linsys_->finalizeLinearSystem();
 }
 
 //--------------------------------------------------------------------------

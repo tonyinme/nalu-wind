@@ -700,12 +700,7 @@ SpecificDissipationRateEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(sdr_);
 
-  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
-  // Perform fringe updates before all equation system solves
-  equationSystems_.preIterAlgDriver_.push_back(theAlg);
-
-  theAlg->fields_.push_back(
-    std::unique_ptr<OversetFieldData>(new OversetFieldData(sdr_,1,1)));
+  equationSystems_.register_overset_field_update(sdr_, 1, 1);
 }
 
 //--------------------------------------------------------------------------
@@ -715,7 +710,7 @@ void
 SpecificDissipationRateEquationSystem::initialize()
 {
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //linsys_->finalizeLinearSystem();
 }
 
 //--------------------------------------------------------------------------
@@ -745,7 +740,7 @@ SpecificDissipationRateEquationSystem::reinitialize_linear_system()
 
   // initialize
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //linsys_->finalizeLinearSystem();
 }
 
 //--------------------------------------------------------------------------

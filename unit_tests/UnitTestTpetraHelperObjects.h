@@ -5,6 +5,8 @@
 
 #include "AssembleElemSolverAlgorithm.h"
 #include "AssembleFaceElemSolverAlgorithm.h"
+#include "CrsGraphHelpers.h"
+#include "CrsGraph.h"
 #include "TpetraLinearSystem.h"
 #include "EquationSystem.h"
 #include "kernel/Kernel.h"
@@ -14,6 +16,19 @@
 
 namespace unit_test_utils {
 
+inline
+bool find_col(int col,
+               const std::vector<int>& cols,
+               int begin, int end)
+{
+  for(int i=begin; i<end; ++i) {
+    if (cols[i] == col) {
+      return true;
+    }
+  }
+  return false;
+}
+
 struct TpetraHelperObjectsBase {
   TpetraHelperObjectsBase(stk::mesh::BulkData& bulk, int numDof)
   : yamlNode(unit_test_utils::get_default_inputs()),
@@ -22,10 +37,19 @@ struct TpetraHelperObjectsBase {
     realm(naluObj->create_realm(realmDefaultNode, "multi_physics", false)),
     eqSystems(realm),
     eqSystem(eqSystems),
-    linsys(new sierra::nalu::TpetraLinearSystem(realm, numDof, &eqSystem, nullptr))
+    crsgraph(Teuchos::rcp(new sierra::nalu::CrsGraph(realm, numDof)))
   {
     realm.metaData_ = &bulk.mesh_meta_data();
     realm.bulkData_ = &bulk;
+    realm.bulkData_ = &bulk;
+    if (numDof == 1)
+      //realm.scalarGraph_ = Teuchos::rcpFromRef(*crsgraph);
+      realm.scalarGraph_ = crsgraph;
+    else
+      //realm.systemGraph_ = Teuchos::rcpFromRef(*crsgraph);
+      realm.systemGraph_ = crsgraph;
+
+    linsys = new sierra::nalu::TpetraLinearSystem(realm, numDof, &eqSystem, nullptr);
     eqSystem.linsys_ = linsys;
   }
 
@@ -109,10 +133,21 @@ struct TpetraHelperObjectsBase {
 
     for(int i=0; i<localMatrix.numRows(); ++i) {
       KokkosSparse::SparseRowViewConst<MatrixType> constRowView = localMatrix.rowConst(i);
-
-      for(int j=0; j<constRowView.length; ++j) {
-        EXPECT_EQ(cols[rowOffsets[i]+j], constRowView.colidx(j));
-        EXPECT_NEAR(vals[rowOffsets[i]+j], constRowView.value(j), 1.e-14)<<"i: "<<i<<", j: "<<j;
+      for(int offset=rowOffsets[i]; offset<rowOffsets[i+1]; ++offset) {
+        int goldCol = cols[offset];
+        bool foundGoldCol = false;
+        for(int j=0; j<constRowView.length; ++j) {
+          if (constRowView.colidx(j) == goldCol) {
+            foundGoldCol = true;
+            EXPECT_NEAR(vals[offset], constRowView.value(j), 1.e-14)<<"i: "<<i<<", j: "<<j;
+          }
+          else if (!find_col(constRowView.colidx(j),
+                             cols, rowOffsets[i], rowOffsets[i+1]))
+          {
+            EXPECT_NEAR(0.0, constRowView.value(j), 1.e-14);
+          }
+        }
+        EXPECT_TRUE(foundGoldCol);
       }
 
       EXPECT_NEAR(rhs[i], localRhs(i,0), 1.e-14)<<"i: "<<i;
@@ -160,7 +195,9 @@ struct TpetraHelperObjectsBase {
   sierra::nalu::Realm& realm;
   sierra::nalu::EquationSystems eqSystems;
   sierra::nalu::EquationSystem eqSystem;
+  Teuchos::RCP<sierra::nalu::CrsGraph> crsgraph;
   sierra::nalu::TpetraLinearSystem* linsys;
+  //sierra::nalu::CrsGraph* crsgraph;
 };
 
 struct TpetraHelperObjectsElem : public TpetraHelperObjectsBase {
@@ -177,7 +214,10 @@ struct TpetraHelperObjectsElem : public TpetraHelperObjectsBase {
 
   virtual void execute()
   {
-    linsys->buildElemToNodeGraph({&realm.metaData_->universal_part()});
+    crsgraph->buildNodeGraph(realm.interiorPartVec_);
+    crsgraph->buildElemToNodeGraph({&realm.metaData_->universal_part()});
+    crsgraph->buildFaceElemToNodeGraph(realm.bcPartVec_);
+    linsys->buildElemToNodeGraph({&realm.metaData_->universal_part()}); //just to call beginLinearSystemConstruction()
     linsys->finalizeLinearSystem();
     assembleElemSolverAlg->execute();
     for (auto kern: assembleElemSolverAlg->activeKernels_)
@@ -235,7 +275,10 @@ struct TpetraHelperObjectsEdge : public TpetraHelperObjectsBase {
   virtual void execute() override
   {
     ThrowRequire(edgeAlg != nullptr);
-    linsys->buildEdgeToNodeGraph({&realm.metaData_->universal_part()});
+    crsgraph->buildNodeGraph(realm.interiorPartVec_);
+    crsgraph->buildElemToNodeGraph({&realm.metaData_->universal_part()});
+    crsgraph->buildFaceElemToNodeGraph(realm.bcPartVec_);
+    linsys->buildEdgeToNodeGraph({&realm.metaData_->universal_part()}); //just to call beginLinearSystemConstruction()
     linsys->finalizeLinearSystem();
 
     edgeAlg->execute();

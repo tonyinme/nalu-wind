@@ -15,17 +15,12 @@
 #include <Enums.h>
 #include <FieldTypeDef.h>
 
-// yaml for parsing..
-#include <yaml-cpp/yaml.h>
-
 #include <BoundaryConditions.h>
 #include <InitialConditions.h>
 #include <MaterialPropertys.h>
 #include <EquationSystems.h>
-#include <Teuchos_RCP.hpp>
-#include <overset/OversetManager.h>
 
-#include <stk_util/util/ParameterList.hpp>
+#include <Teuchos_RCP.hpp>
 
 #include <stk_ngp/NgpFieldManager.hpp>
 
@@ -35,7 +30,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <stdint.h>
+#include <memory>
 
 namespace stk {
 namespace mesh {
@@ -43,6 +38,10 @@ class Part;
 }
 namespace io {
   class StkMeshIoBroker;
+}
+
+namespace util {
+class ParameterList;
 }
 }
 
@@ -60,11 +59,9 @@ class GeometryAlgDriver;
 
 class NonConformalManager;
 class ErrorIndicatorAlgorithmDriver;
-#if defined (NALU_USES_PERCEPT)
-class Adapter;
-#endif
 class EquationSystems;
 class OutputInfo;
+class OversetManager;
 class PostProcessingInfo;
 class PeriodicManager;
 class Realms;
@@ -87,6 +84,8 @@ class BdyLayerStatistics;
 class TensorProductQuadratureRule;
 class LagrangeBasis;
 class PromotedElementIO;
+
+class CrsGraph;
 
 /** Representation of a computational domain and physics equations solved on
  * this domain.
@@ -120,8 +119,6 @@ class Realm {
 
   void create_mesh();
 
-  void setup_adaptivity();
-
   void setup_nodal_fields();
   void setup_edge_fields();
   void setup_element_fields();
@@ -141,6 +138,8 @@ class Realm {
   void makeSureNodesHaveValidTopology();
 
   void initialize_global_variables();
+
+  void rebalance_mesh();
 
   void balance_nodes();
 
@@ -353,8 +352,7 @@ class Realm {
   //  to be applied, e.g., in adaptivity we need to avoid the parent
   //  elements
   stk::mesh::BucketVector const& get_buckets( stk::mesh::EntityRank rank,
-                                              const stk::mesh::Selector & selector ,
-                                              bool get_all = false) const;
+                                              const stk::mesh::Selector & selector) const;
 
   // get aura, bulk and meta data
   bool get_activate_aura();
@@ -421,14 +419,8 @@ class Realm {
 
   // algorithm drivers managed by region
   std::unique_ptr<GeometryAlgDriver> geometryAlgDriver_;
-  ErrorIndicatorAlgorithmDriver *errorIndicatorAlgDriver_;
-# if defined (NALU_USES_PERCEPT)  
-  Adapter *adapter_;
-#endif
   unsigned numInitialElements_;
-  // for element, side, edge, node rank (node not used)
-  stk::mesh::Selector adapterSelector_[4];
-  Teuchos::RCP<stk::mesh::Selector> activePartForIO_;
+
 
   TimeIntegrator *timeIntegrator_;
 
@@ -437,6 +429,11 @@ class Realm {
   MaterialPropertys materialPropertys_;
   
   EquationSystems equationSystems_;
+
+  //single-DOF graph
+  Teuchos::RCP<CrsGraph> scalarGraph_;
+  //multiple-DOF graph
+  Teuchos::RCP<CrsGraph> systemGraph_;
 
   double maxCourant_;
   double maxReynolds_;
@@ -470,7 +467,6 @@ class Realm {
   double timerNonconformal_;
   double timerInitializeEqs_;
   double timerPropertyEval_;
-  double timerAdapt_;
   double timerTransferSearch_;
   double timerTransferExecute_;
   double timerSkinMesh_;
@@ -493,7 +489,7 @@ class Realm {
   bool hasFluids_;
 
   // global parameter list
-  stk::util::ParameterList globalParameters_;
+  std::unique_ptr<stk::util::ParameterList> globalParameters_;
 
   // part for all exposed surfaces in the mesh
   stk::mesh::Part *exposedBoundaryPart_;
@@ -606,7 +602,6 @@ class Realm {
   double get_stefan_boltzmann();
   double get_turb_model_constant(
     const TurbulenceModelConstant turbModelEnum);
-  bool process_adaptivity();
 
   // element promotion options
   bool doPromotion_; // conto
@@ -630,9 +625,6 @@ class Realm {
 
   std::string physics_part_name(std::string) const;
   std::vector<std::string> physics_part_names(std::vector<std::string>) const;
-
-  // check for mesh changing
-  bool mesh_changed() const;
 
   stk::mesh::PartVector allPeriodicInteractingParts_;
   stk::mesh::PartVector allNonConformalInteractingParts_;
@@ -676,10 +668,13 @@ class Realm {
    */
   bool hypreIsActive_{false};
 
+  std::vector<std::string> handle_all_element_part_alias(const std::vector<std::string>& names) const;
+
 protected:
   std::unique_ptr<NgpMeshInfo> meshInfo_;
 
   unsigned meshModCount_{0};
+  const std::string allElementPartAlias{"all_blocks"};
 
 };
 

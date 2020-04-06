@@ -30,6 +30,7 @@
 #include <master_element/MasterElement.h>
 #include "master_element/MasterElementFactory.h"
 #include <NaluEnv.h>
+#include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
 #include <Simulation.h>
@@ -741,7 +742,6 @@ void
 RadiativeTransportEquationSystem::initialize()
 {
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
 }
 
 void

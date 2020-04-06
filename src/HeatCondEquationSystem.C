@@ -31,21 +31,18 @@
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <Enums.h>
-#include <ErrorIndicatorAlgorithmDriver.h>
 #include <FieldFunctions.h>
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
 #include <NaluEnv.h>
+#include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
 #include <HeatCondMassBackwardEulerNodeSuppAlg.h>
 #include <HeatCondMassBDF2NodeSuppAlg.h>
 #include <ProjectedNodalGradientEquationSystem.h>
-#include <PstabErrorIndicatorEdgeAlgorithm.h>
-#include <PstabErrorIndicatorElemAlgorithm.h>
-#include <SimpleErrorIndicatorScalarElemAlgorithm.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -274,14 +271,7 @@ HeatCondEquationSystem::register_element_fields(
   const stk::topology & /* theTopo */)
 {
   stk::mesh::MetaData &meta_data = realm_.meta_data();
-  
-  // deal with heat conduction error indicator; elemental field of size unity
-  if ( realm_.solutionOptions_->activateAdaptivity_) {
-    const int numIp = 1;
-    GenericFieldType *pstabEI= &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator"));
-    stk::mesh::put_field_on_mesh(*pstabEI, *part, numIp, nullptr);
-  }
-  
+    
   // register the intersected elemental field
   if ( realm_.query_for_overset() ) {
     const int sizeOfElemField = 1;
@@ -444,33 +434,6 @@ HeatCondEquationSystem::register_interior_algorithm(
   }
   else {
     itsm->second->partVec_.push_back(part);
-  }
-
-  // deal with adaptivity
-  if ( realm_.solutionOptions_->activateAdaptivity_) {
-
-    // non-solver alg
-    std::map<AlgorithmType, Algorithm *>::iterator itEI
-      = realm_.errorIndicatorAlgDriver_->algMap_.find(algType);
-    if ( itEI == realm_.errorIndicatorAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( realm_.solutionOptions_->errorIndicatorType_ & EIT_PSTAB ) {
-        if ( realm_.realmUsesEdges_)
-          theAlg = new PstabErrorIndicatorEdgeAlgorithm(realm_, part, temperature_, dtdx_, true);
-        else
-          theAlg = new PstabErrorIndicatorElemAlgorithm(realm_, part, temperature_, dtdx_, true);
-      }
-      else if ( realm_.solutionOptions_->errorIndicatorType_ & EIT_SIMPLE_DUDX2 ) {
-        theAlg = new SimpleErrorIndicatorScalarElemAlgorithm(realm_, part, temperature_, dtdx_);
-      }
-      else {
-        throw std::runtime_error("Sorry, only zz-like EI for heat conduction is supported");
-      }
-      realm_.errorIndicatorAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      itEI->second->partVec_.push_back(part);
-    }
   }
 }
 
@@ -894,12 +857,7 @@ HeatCondEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(temperature_);
 
-  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
-  // Perform fringe updates before all equation system solves
-  equationSystems_.preIterAlgDriver_.push_back(theAlg);
-
-  theAlg->fields_.push_back(
-    std::unique_ptr<OversetFieldData>(new OversetFieldData(temperature_,1,1)));
+  equationSystems_.register_overset_field_update(temperature_, 1, 1);
 }
 
 //--------------------------------------------------------------------------
@@ -909,7 +867,7 @@ void
 HeatCondEquationSystem::initialize()
 {
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //linsys_->finalizeLinearSystem();
 }
 
 //--------------------------------------------------------------------------
@@ -939,7 +897,7 @@ HeatCondEquationSystem::reinitialize_linear_system()
 
   // initialize
   solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //linsys_->finalizeLinearSystem();
 }
 
 void

@@ -7,7 +7,6 @@ target_sources(nalu PRIVATE
    ${CMAKE_CURRENT_SOURCE_DIR}/AssembleContinuityElemSolverAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/AssembleContinuityInflowSolverAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/AssembleContinuityNonConformalSolverAlgorithm.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/AssembleCourantReynoldsElemAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/AssembleElemSolverAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/AssembleFaceElemSolverAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/AssembleEdgeSolverAlgorithm.C
@@ -60,6 +59,8 @@ target_sources(nalu PRIVATE
    ${CMAKE_CURRENT_SOURCE_DIR}/ContinuityMassElemSuppAlgDep.C
    ${CMAKE_CURRENT_SOURCE_DIR}/CopyFieldAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/CoriolisSrc.C
+   ${CMAKE_CURRENT_SOURCE_DIR}/CrsGraph.C
+   ${CMAKE_CURRENT_SOURCE_DIR}/CrsGraphHelpers.C
    ${CMAKE_CURRENT_SOURCE_DIR}/DataProbePostProcessing.C
    ${CMAKE_CURRENT_SOURCE_DIR}/DgInfo.C
    ${CMAKE_CURRENT_SOURCE_DIR}/DirichletBC.C
@@ -73,7 +74,6 @@ target_sources(nalu PRIVATE
    ${CMAKE_CURRENT_SOURCE_DIR}/EnthalpyViscousWorkNodeSuppAlg.C
    ${CMAKE_CURRENT_SOURCE_DIR}/EquationSystem.C
    ${CMAKE_CURRENT_SOURCE_DIR}/EquationSystems.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/ErrorIndicatorAlgorithmDriver.C
    ${CMAKE_CURRENT_SOURCE_DIR}/FieldFunctions.C
    ${CMAKE_CURRENT_SOURCE_DIR}/FixPressureAtNodeAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/HeatCondEquationSystem.C
@@ -81,8 +81,6 @@ target_sources(nalu PRIVATE
    ${CMAKE_CURRENT_SOURCE_DIR}/HeatCondMassBackwardEulerNodeSuppAlg.C
    ${CMAKE_CURRENT_SOURCE_DIR}/InitialConditions.C
    ${CMAKE_CURRENT_SOURCE_DIR}/InputOutputRealm.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/InterfaceBalancer.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/LimiterErrorIndicatorElemAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/LinearSolver.C
    ${CMAKE_CURRENT_SOURCE_DIR}/LinearSolverConfig.C
    ${CMAKE_CURRENT_SOURCE_DIR}/LinearSolvers.C
@@ -106,15 +104,11 @@ target_sources(nalu PRIVATE
    ${CMAKE_CURRENT_SOURCE_DIR}/PeriodicManager.C
    ${CMAKE_CURRENT_SOURCE_DIR}/PostProcessingInfo.C
    ${CMAKE_CURRENT_SOURCE_DIR}/ProjectedNodalGradientEquationSystem.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/PstabErrorIndicatorEdgeAlgorithm.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/PstabErrorIndicatorElemAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/Realm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/Realms.C
    ${CMAKE_CURRENT_SOURCE_DIR}/ScalarMassElemSuppAlgDep.C
    ${CMAKE_CURRENT_SOURCE_DIR}/ScratchViews.C
    ${CMAKE_CURRENT_SOURCE_DIR}/ShearStressTransportEquationSystem.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/SimpleErrorIndicatorElemAlgorithm.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/SimpleErrorIndicatorScalarElemAlgorithm.C
    ${CMAKE_CURRENT_SOURCE_DIR}/Simulation.C
    ${CMAKE_CURRENT_SOURCE_DIR}/SolutionNormPostProcessing.C
    ${CMAKE_CURRENT_SOURCE_DIR}/SolutionOptions.C
@@ -128,7 +122,6 @@ target_sources(nalu PRIVATE
    ${CMAKE_CURRENT_SOURCE_DIR}/TAMSAlgDriver.C
    ${CMAKE_CURRENT_SOURCE_DIR}/TimeIntegrator.C
    ${CMAKE_CURRENT_SOURCE_DIR}/TpetraLinearSystem.C
-   ${CMAKE_CURRENT_SOURCE_DIR}/TpetraLinearSystemHelpers.C
    ${CMAKE_CURRENT_SOURCE_DIR}/TpetraSegregatedLinearSystem.C
    ${CMAKE_CURRENT_SOURCE_DIR}/TurbKineticEnergyEquationSystem.C
    ${CMAKE_CURRENT_SOURCE_DIR}/TurbKineticEnergyKsgsBuoyantElemSuppAlg.C
@@ -161,12 +154,6 @@ if(ENABLE_HYPRE)
       ${CMAKE_CURRENT_SOURCE_DIR}/HypreLinearSolverConfig.C
       ${CMAKE_CURRENT_SOURCE_DIR}/HypreLinearSystem.C
       ${CMAKE_CURRENT_SOURCE_DIR}/HypreUVWLinearSystem.C
-   )
-endif()
-
-if(ENABLE_PARAVIEW_CATALYST)
-   target_sources(nalu PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/Adapter.C
    )
 endif()
 
